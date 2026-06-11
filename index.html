@@ -2883,15 +2883,19 @@ function renderBadges() {
 // Gallery
 function renderGallery() {
   const c = document.getElementById('gallery-grid');
-  c.innerHTML = GALLERY_DATA.map(g => `
-    <div class="gallery-item" style="background:${g.bg}">
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3.5rem;opacity:0.3">${g.icon}</div>
-      <div class="overlay">
-        <h4>${g.name}</h4>
-        <p>${g.desc}</p>
+  c.innerHTML = GALLERY_DATA.map(g => {
+    const style = g.img ? `background-image: url('${g.img}'); background-size: cover; background-position: center;` : `background: ${g.bg};`;
+    const iconHtml = g.img ? '' : `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3.5rem;opacity:0.3">${g.icon}</div>`;
+    return `
+      <div class="gallery-item" style="${style}">
+        ${iconHtml}
+        <div class="overlay" style="z-index:2;">
+          <h4>${g.name}</h4>
+          <p>${g.desc}</p>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 
