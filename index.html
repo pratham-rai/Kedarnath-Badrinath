@@ -1156,8 +1156,10 @@ body {
 }
 
 .temple-card-banner {
-  height: 80px;
+  height: 140px;
   background: linear-gradient(135deg, var(--saffron), var(--gold));
+  background-size: cover;
+  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1215,23 +1217,39 @@ body {
 .trek-card {
   background: white;
   border-radius: var(--radius-lg);
-  padding: 28px;
+  overflow: hidden;
   box-shadow: var(--shadow-sm);
   border: 1px solid rgba(5, 150, 105, 0.1);
   transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-}
-.trek-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--emerald), #10B981);
 }
 .trek-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
+}
+
+.trek-card-banner {
+  height: 140px;
+  background: linear-gradient(135deg, var(--emerald), #10B981);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  position: relative;
+}
+.trek-card-banner::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0; right: 0;
+  height: 20px;
+  background: white;
+  border-radius: 20px 20px 0 0;
+}
+
+.trek-card-body {
+  padding: 20px 24px 24px;
 }
 
 .trek-card h4 {
@@ -2471,7 +2489,7 @@ const PLACES = [
   { name: 'Saraswati River', icon: '🌊', tag: 'nature', tagLabel: 'Sacred River', desc: 'The mythical river emerges briefly near Mana Village before disappearing underground. A rare and sacred sight.', bg: 'linear-gradient(135deg, #0284C7, #38BDF8)', img: 'Saraswati River.jpeg' },
   { name: 'Bheem Pul', icon: '🌉', tag: 'nature', tagLabel: 'Natural Bridge', desc: 'A natural rock bridge over the Saraswati River, said to have been placed by Bheem for Draupadi during their exile.', bg: 'linear-gradient(135deg, #6D28D9, #A78BFA)', img: 'Bheem Pul.jpeg' },
   { name: 'Vasudhara Falls', icon: '💧', tag: 'trek', tagLabel: 'Optional Trek', desc: 'A magnificent 122m waterfall near Mana Village. The trek is optional and depends on weather and energy levels.', bg: 'linear-gradient(135deg, #0891B2, #22D3EE)', img: 'Vasudhara Falls.jpeg' },
-  { name: 'Narsingh Temple', icon: '🛕', tag: 'temple', tagLabel: 'Temple', desc: 'Ancient temple in Joshimath dedicated to Lord Narasimha. One of the Badri shrines with a self-manifested idol.', bg: 'linear-gradient(135deg, #B91C1C, #EF4444)', img: 'Joshimath.jpeg' },
+  { name: 'Narsingh Temple', icon: '🛕', tag: 'temple', tagLabel: 'Temple', desc: 'Ancient temple in Joshimath dedicated to Lord Narasimha. One of the Badri shrines with a self-manifested idol.', bg: 'linear-gradient(135deg, #B91C1C, #EF4444)', img: 'Narsingh Temple.jpeg' },
   { name: 'Jyotir Math', icon: '📿', tag: 'holy', tagLabel: 'Math', desc: 'One of the four Maths established by Adi Shankaracharya. An important center of learning and spirituality.', bg: 'linear-gradient(135deg, #854D0E, #EAB308)', img: 'Jyotir Math.jpg' },
   { name: 'Triveni Ghat', icon: '🕉️', tag: 'holy', tagLabel: 'Holy Ghat', desc: 'Sacred confluence in Rishikesh where three holy rivers meet. Famous for its serene evening aarti ceremony.', bg: 'linear-gradient(135deg, #0EA5E9, #7DD3FC)', img: 'triveni ghat.jpeg' },
   { name: 'Ram Jhula / Lakshman Jhula', icon: '🌉', tag: 'nature', tagLabel: 'Landmark', desc: 'Iconic suspension bridges over the Ganges in Rishikesh. A symbol of the city\'s spiritual heritage and scenic beauty.', bg: 'linear-gradient(135deg, #059669, #6EE7B7)', img: 'Ram Jhula.jpeg' }
@@ -2541,7 +2559,7 @@ const TEMPLES_DATA = [
   },
   {
     name: 'Narsingh Temple', icon: '🦁', desc: 'Ancient temple in Joshimath dedicated to Lord Narasimha (Narsingh), the fourth avatar of Lord Vishnu. The idol is believed to be self-manifested and is one of the Panch Badri shrines. It is the winter seat of Badrinath.',
-    img: 'Joshimath.jpeg',
+    img: 'Narsingh Temple.jpeg',
     details: [
       { icon: '📍', text: 'Location: Joshimath, Chamoli district' },
       { icon: '🛕', text: 'Deity: Lord Narasimha' },
@@ -2814,13 +2832,17 @@ function renderTemples() {
   const c = document.getElementById('temple-cards');
   c.innerHTML = TEMPLES_DATA.map(t => {
     const details = t.details.map(d => `<div class="temple-detail"><span class="icon">${d.icon}</span> ${d.text}</div>`).join('');
-    const bannerStyle = t.img ? `background-image: url('${t.img}'); background-size: cover; background-position: center; height: 160px;` : `background: linear-gradient(135deg, var(--saffron), var(--gold)); height: 80px;`;
+    const style = t.img ? `background-image: url('${t.img}');` : '';
     const iconHtml = t.img ? '' : t.icon;
     return `
       <div class="temple-card">
-        <div class="temple-card-banner" style="${bannerStyle}">${iconHtml}</div>
+        <div class="temple-card-banner" style="${style}">
+          ${iconHtml}
+        </div>
         <div class="temple-card-body">
-          <h4>${t.name}</h4>
+          <h4 style="display:flex; align-items:center; gap:8px;">
+            ${t.img ? `<span style="font-size:1.2rem;">${t.icon}</span>` : ''} ${t.name}
+          </h4>
           <p>${t.desc}</p>
           ${details}
         </div>
@@ -2833,18 +2855,25 @@ function renderTemples() {
 function renderTreks() {
   const c = document.getElementById('trek-cards');
   c.innerHTML = TREKS_DATA.map(t => {
-    const bannerHtml = t.img ? `<div class="trek-card-banner" style="background-image: url('${t.img}'); background-size: cover; background-position: center; height: 140px; margin: -28px -28px 18px -28px; position: relative; border-bottom: 1px solid rgba(5, 150, 105, 0.1);"></div>` : '';
+    const style = t.img ? `background-image: url('${t.img}');` : '';
+    const iconHtml = t.img ? '' : t.icon;
     return `
       <div class="trek-card">
-        ${bannerHtml}
-        <h4>${t.icon} ${t.name}</h4>
-        <span class="trek-difficulty ${t.difficulty}">${t.diffLabel}</span>
-        <div class="trek-meta">
-          <div class="trek-meta-item"><div class="label">Distance</div><div class="value">${t.distance}</div></div>
-          <div class="trek-meta-item"><div class="label">Time</div><div class="value">${t.time}</div></div>
+        <div class="trek-card-banner" style="${style}">
+          ${iconHtml}
         </div>
-        <div class="trek-tips"><strong>Tips:</strong> ${t.tips}</div>
-        <div class="trek-tips" style="margin-top:8px;"><strong>⚠️ Safety:</strong> ${t.safety}</div>
+        <div class="trek-card-body">
+          <h4 style="display:flex; align-items:center; gap:8px;">
+            ${t.img ? `<span style="font-size:1.2rem;">${t.icon}</span>` : ''} ${t.name}
+          </h4>
+          <span class="trek-difficulty ${t.difficulty}">${t.diffLabel}</span>
+          <div class="trek-meta">
+            <div class="trek-meta-item"><div class="label">Distance</div><div class="value">${t.distance}</div></div>
+            <div class="trek-meta-item"><div class="label">Time</div><div class="value">${t.time}</div></div>
+          </div>
+          <div class="trek-tips"><strong>Tips:</strong> ${t.tips}</div>
+          <div class="trek-tips" style="margin-top:8px;"><strong>⚠️ Safety:</strong> ${t.safety}</div>
+        </div>
       </div>
     `;
   }).join('');
