@@ -1518,6 +1518,32 @@ body {
 }
 .gallery-item:hover { transform: scale(1.02); }
 
+.gallery-upload-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: var(--transition);
+  font-size: 0.9rem;
+  line-height: 1;
+  user-select: none;
+}
+.gallery-upload-btn:hover {
+  background: var(--saffron);
+  transform: scale(1.1);
+  border-color: var(--gold);
+}
+
 .gallery-item .overlay {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -2884,10 +2910,24 @@ function renderBadges() {
 function renderGallery() {
   const c = document.getElementById('gallery-grid');
   c.innerHTML = GALLERY_DATA.map(g => {
-    const style = g.img ? `background-image: url('${g.img}'); background-size: cover; background-position: center;` : `background: ${g.bg};`;
-    const iconHtml = g.img ? '' : `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3.5rem;opacity:0.3">${g.icon}</div>`;
+    const savedImg = localStorage.getItem(`pilgrim_gallery_${g.name}`);
+    const imgSrc = savedImg || g.img;
+    
+    const style = imgSrc ? `background-image: url('${imgSrc}'); background-size: cover; background-position: center;` : `background: ${g.bg};`;
+    const iconHtml = imgSrc ? '' : `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3.5rem;opacity:0.3">${g.icon}</div>`;
+    const deleteBtn = savedImg ? `
+      <button class="gallery-upload-btn" style="right: 52px; background: rgba(220, 38, 38, 0.75);" title="Remove Photo" onclick="event.stopPropagation(); removeGalleryImage('${g.name}')">
+        🗑️
+      </button>
+    ` : '';
+    
     return `
       <div class="gallery-item" style="${style}">
+        <label class="gallery-upload-btn" title="Upload Photo" onclick="event.stopPropagation();">
+          📷
+          <input type="file" accept="image/*" style="display:none;" onchange="uploadGalleryImage('${g.name}', this)">
+        </label>
+        ${deleteBtn}
         ${iconHtml}
         <div class="overlay" style="z-index:2;">
           <h4>${g.name}</h4>
@@ -2897,6 +2937,33 @@ function renderGallery() {
     `;
   }).join('');
 }
+
+window.uploadGalleryImage = function(name, input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  if (file.size > 800 * 1024) {
+    const proceed = confirm("This image is quite large (" + Math.round(file.size/1024) + "KB). We recommend uploading compressed images under 800KB so they can auto-save properly within browser storage limit (5MB total). Proceed anyway?");
+    if (!proceed) return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result;
+    try {
+      localStorage.setItem(`pilgrim_gallery_${name}`, base64);
+      renderGallery();
+    } catch (err) {
+      alert("Storage limit reached! Please compress the image or delete other uploaded photos first.");
+    }
+  };
+  reader.readAsDataURL(file);
+};
+
+window.removeGalleryImage = function(name) {
+  localStorage.removeItem(`pilgrim_gallery_${name}`);
+  renderGallery();
+};
 
 
 /* ───────────────────────────────────────────
