@@ -1518,32 +1518,6 @@ body {
 }
 .gallery-item:hover { transform: scale(1.02); }
 
-.gallery-upload-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-  transition: var(--transition);
-  font-size: 0.9rem;
-  line-height: 1;
-  user-select: none;
-}
-.gallery-upload-btn:hover {
-  background: var(--saffron);
-  transform: scale(1.1);
-  border-color: var(--gold);
-}
-
 .gallery-item .overlay {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -2688,14 +2662,14 @@ const BADGES_DATA = [
 ];
 
 const GALLERY_DATA = [
-  { name: 'Haridwar', desc: 'Ganga Aarti at Har Ki Pauri', bg: 'linear-gradient(135deg, #0EA5E9, #06B6D4)', icon: '🕉️' },
-  { name: 'Triyuginarayan', desc: 'Eternal flame of divine wedding', bg: 'linear-gradient(135deg, #F97316, #EF4444)', icon: '🔥' },
-  { name: 'Kedarnath', desc: 'Sacred Jyotirlinga in the Himalayas', bg: 'linear-gradient(135deg, #7F1D1D, #DC2626)', icon: '🙏' },
-  { name: 'Vasuki Tal', desc: 'Glacial lake at 4,135m', bg: 'linear-gradient(135deg, #059669, #10B981)', icon: '❄️' },
-  { name: 'Badrinath', desc: 'Divine seat of Badri Vishal', bg: 'linear-gradient(135deg, #B45309, #FBBF24)', icon: '🛕' },
-  { name: 'Mana Village', desc: 'Last village of India', bg: 'linear-gradient(135deg, #1E40AF, #3B82F6)', icon: '🏔️' },
-  { name: 'Joshimath', desc: 'Gateway to Badrinath', bg: 'linear-gradient(135deg, #6D28D9, #A78BFA)', icon: '🏘️' },
-  { name: 'Rishikesh', desc: 'Yoga capital of the world', bg: 'linear-gradient(135deg, #059669, #34D399)', icon: '🌊' }
+  { name: 'Haridwar', desc: 'Ganga Aarti at Har Ki Pauri', bg: 'linear-gradient(135deg, #0EA5E9, #06B6D4)', icon: '🕉️', img: 'haridwar.jpeg' },
+  { name: 'Triyuginarayan', desc: 'Eternal flame of divine wedding', bg: 'linear-gradient(135deg, #F97316, #EF4444)', icon: '🔥', img: 'Triyuginarayan.jpeg' },
+  { name: 'Kedarnath', desc: 'Sacred Jyotirlinga in the Himalayas', bg: 'linear-gradient(135deg, #7F1D1D, #DC2626)', icon: '🙏', img: 'Kedarnath.jpeg' },
+  { name: 'Vasuki Tal', desc: 'Glacial lake at 4,135m', bg: 'linear-gradient(135deg, #059669, #10B981)', icon: '❄️', img: 'Vasuki Tal.jpeg' },
+  { name: 'Badrinath', desc: 'Divine seat of Badri Vishal', bg: 'linear-gradient(135deg, #B45309, #FBBF24)', icon: '🛕', img: 'Badrinath.jpeg' },
+  { name: 'Mana Village', desc: 'Last village of India', bg: 'linear-gradient(135deg, #1E40AF, #3B82F6)', icon: '🏔️', img: 'Mana Village.jpeg' },
+  { name: 'Joshimath', desc: 'Gateway to Badrinath', bg: 'linear-gradient(135deg, #6D28D9, #A78BFA)', icon: '🏘️', img: 'Joshimath.jpeg' },
+  { name: 'Rishikesh', desc: 'Yoga capital of the world', bg: 'linear-gradient(135deg, #059669, #34D399)', icon: '🌊', img: 'Rishikesh.jpeg' }
 ];
 
 
@@ -2910,24 +2884,10 @@ function renderBadges() {
 function renderGallery() {
   const c = document.getElementById('gallery-grid');
   c.innerHTML = GALLERY_DATA.map(g => {
-    const savedImg = localStorage.getItem(`pilgrim_gallery_${g.name}`);
-    const imgSrc = savedImg || g.img;
-    
-    const style = imgSrc ? `background-image: url('${imgSrc}'); background-size: cover; background-position: center;` : `background: ${g.bg};`;
-    const iconHtml = imgSrc ? '' : `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3.5rem;opacity:0.3">${g.icon}</div>`;
-    const deleteBtn = savedImg ? `
-      <button class="gallery-upload-btn" style="right: 52px; background: rgba(220, 38, 38, 0.75);" title="Remove Photo" onclick="event.stopPropagation(); removeGalleryImage('${g.name}')">
-        🗑️
-      </button>
-    ` : '';
-    
+    const style = g.img ? `background-image: url('${g.img}'); background-size: cover; background-position: center;` : `background: ${g.bg};`;
+    const iconHtml = g.img ? '' : `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3.5rem;opacity:0.3">${g.icon}</div>`;
     return `
       <div class="gallery-item" style="${style}">
-        <label class="gallery-upload-btn" title="Upload Photo" onclick="event.stopPropagation();">
-          📷
-          <input type="file" accept="image/*" style="display:none;" onchange="uploadGalleryImage('${g.name}', this)">
-        </label>
-        ${deleteBtn}
         ${iconHtml}
         <div class="overlay" style="z-index:2;">
           <h4>${g.name}</h4>
@@ -2937,33 +2897,6 @@ function renderGallery() {
     `;
   }).join('');
 }
-
-window.uploadGalleryImage = function(name, input) {
-  const file = input.files[0];
-  if (!file) return;
-
-  if (file.size > 800 * 1024) {
-    const proceed = confirm("This image is quite large (" + Math.round(file.size/1024) + "KB). We recommend uploading compressed images under 800KB so they can auto-save properly within browser storage limit (5MB total). Proceed anyway?");
-    if (!proceed) return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const base64 = e.target.result;
-    try {
-      localStorage.setItem(`pilgrim_gallery_${name}`, base64);
-      renderGallery();
-    } catch (err) {
-      alert("Storage limit reached! Please compress the image or delete other uploaded photos first.");
-    }
-  };
-  reader.readAsDataURL(file);
-};
-
-window.removeGalleryImage = function(name) {
-  localStorage.removeItem(`pilgrim_gallery_${name}`);
-  renderGallery();
-};
 
 
 /* ───────────────────────────────────────────
