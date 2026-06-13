@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🕉️ Kedarnath – Badrinath Pilgrimage 2026 | Sacred Himalayan Journey</title>
 <meta name="description" content="Complete pilgrimage travel guide for Kedarnath and Badrinath Dham Yatra 2026. Includes day-wise itinerary, budget planner, trek companion, and interactive checklist. From Mangalore to the sacred Himalayas.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#F97316">
+<link rel="apple-touch-icon" href="yatra-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
@@ -2740,15 +2743,23 @@ function renderStars() {
 // Day Itinerary
 function renderItinerary() {
   const c = document.getElementById('itinerary-cards');
-  const completedDays = JSON.parse(localStorage.getItem('pilgrim_completed_days') || '[]');
+  const completedEntries = JSON.parse(localStorage.getItem('pilgrim_completed_entries') || '{}');
   c.innerHTML = ITINERARY.map(d => {
-    const isCompleted = completedDays.includes(d.day);
-    const entries = d.entries.map(e => `
-      <div class="timeline-entry">
-        <div class="timeline-time">${e.time}</div>
-        <div class="timeline-content">${e.text}</div>
-      </div>
-    `).join('');
+    const dayEntries = d.entries;
+    const completedForThisDay = dayEntries.filter((e, idx) => completedEntries[`d${d.day}_e${idx}`]).length;
+    const isCompleted = completedForThisDay === dayEntries.length;
+
+    const entries = dayEntries.map((e, idx) => {
+      const entryKey = `d${d.day}_e${idx}`;
+      const isEntryCompleted = completedEntries[entryKey] || false;
+      return `
+        <div class="timeline-entry">
+          <input type="checkbox" class="entry-check" id="chk_${entryKey}" ${isEntryCompleted ? 'checked' : ''} onchange="toggleEntryComplete(${d.day}, ${idx}, this.checked)" onclick="event.stopPropagation();" style="margin-top: 2px; cursor: pointer; transform: scale(1.15); accent-color: var(--saffron); flex-shrink: 0;">
+          <div class="timeline-time">${e.time}</div>
+          <div class="timeline-content" style="${isEntryCompleted ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${e.text}</div>
+        </div>
+      `;
+    }).join('');
     const stay = d.stay ? `<div class="day-stay">🏠 Night Stay: ${d.stay}</div>` : '';
     const note = d.note ? `<div class="day-note">💡 ${d.note}</div>` : '';
     return `
@@ -2760,7 +2771,10 @@ function renderItinerary() {
             <div class="day-route">${d.route}</div>
             <div class="day-date">${d.date}</div>
           </div>
-          <input type="checkbox" class="day-check" data-day="${d.day}" ${isCompleted ? 'checked' : ''} onclick="event.stopPropagation();toggleDayComplete(${d.day}, this.checked);" aria-label="Mark Day ${d.day} complete">
+          <div class="day-status-container" style="display: flex; align-items: center; gap: 8px; margin-left: auto; margin-right: 12px;">
+            ${completedForThisDay > 0 && completedForThisDay < dayEntries.length ? `<span class="day-progress-text" style="font-size: 0.8rem; color: var(--saffron); font-weight: 600;">${completedForThisDay}/${dayEntries.length}</span>` : ''}
+            <input type="checkbox" class="day-check" data-day="${d.day}" ${isCompleted ? 'checked' : ''} disabled style="cursor: default; pointer-events: none;" aria-label="Day ${d.day} completed status">
+          </div>
           <span class="day-expand-icon">▾</span>
         </div>
         <div class="day-card-body">
@@ -2975,16 +2989,76 @@ window.toggleDay = function(day) {
   card.classList.toggle('expanded');
 };
 
-window.toggleDayComplete = function(day, checked) {
-  let completed = JSON.parse(localStorage.getItem('pilgrim_completed_days') || '[]');
-  if (checked && !completed.includes(day)) {
-    completed.push(day);
-  } else if (!checked) {
-    completed = completed.filter(d => d !== day);
+window.toggleEntryComplete = function(day, entryIdx, checked) {
+  let completedEntries = JSON.parse(localStorage.getItem('pilgrim_completed_entries') || '{}');
+  const entryKey = `d${day}_e${entryIdx}`;
+  
+  if (checked) {
+    completedEntries[entryKey] = true;
+  } else {
+    delete completedEntries[entryKey];
   }
-  localStorage.setItem('pilgrim_completed_days', JSON.stringify(completed));
+  
+  localStorage.setItem('pilgrim_completed_entries', JSON.stringify(completedEntries));
+  
+  // Re-calculate pilgrim_completed_days based on completed entries
+  let completedDays = [];
+  ITINERARY.forEach(d => {
+    const dayEntries = d.entries;
+    const allDone = dayEntries.every((e, idx) => completedEntries[`d${d.day}_e${idx}`]);
+    if (allDone) {
+      completedDays.push(d.day);
+    }
+  });
+  localStorage.setItem('pilgrim_completed_days', JSON.stringify(completedDays));
+  
+  // Update progress and badges
   updateProgress();
   renderBadges();
+  
+  // Dynamically update the specific day card header (performance optimization to avoid collapsing expanded days)
+  const dayCard = document.querySelector(`.day-card[data-day="${day}"]`);
+  if (dayCard) {
+    const dayEntries = ITINERARY.find(d => d.day === day).entries;
+    const completedForThisDay = dayEntries.filter((e, idx) => completedEntries[`d${day}_e${idx}`]).length;
+    const isCompleted = completedForThisDay === dayEntries.length;
+    
+    const checkEl = dayCard.querySelector('.day-check');
+    if (checkEl) checkEl.checked = isCompleted;
+    
+    const statusContainer = dayCard.querySelector('.day-status-container');
+    if (statusContainer) {
+      if (isCompleted) {
+        statusContainer.innerHTML = `
+          <input type="checkbox" class="day-check" data-day="${day}" checked disabled style="cursor: default; pointer-events: none;" aria-label="Day ${day} completed status">
+        `;
+      } else if (completedForThisDay > 0) {
+        statusContainer.innerHTML = `
+          <span class="day-progress-text" style="font-size: 0.8rem; color: var(--saffron); font-weight: 600;">${completedForThisDay}/${dayEntries.length}</span>
+          <input type="checkbox" class="day-check" data-day="${day}" disabled style="cursor: default; pointer-events: none;" aria-label="Day ${day} completed status">
+        `;
+      } else {
+        statusContainer.innerHTML = `
+          <input type="checkbox" class="day-check" data-day="${day}" disabled style="cursor: default; pointer-events: none;" aria-label="Day ${day} completed status">
+        `;
+      }
+    }
+    
+    // Toggle strike-through
+    const entryEl = dayCard.querySelectorAll('.timeline-entry')[entryIdx];
+    if (entryEl) {
+      const contentEl = entryEl.querySelector('.timeline-content');
+      if (contentEl) {
+        if (checked) {
+          contentEl.style.textDecoration = 'line-through';
+          contentEl.style.opacity = '0.6';
+        } else {
+          contentEl.style.textDecoration = 'none';
+          contentEl.style.opacity = '1';
+        }
+      }
+    }
+  }
 };
 
 window.saveChecklist = function() {
@@ -3006,15 +3080,36 @@ function updateChecklistProgress() {
 }
 
 function updateProgress() {
-  const completed = JSON.parse(localStorage.getItem('pilgrim_completed_days') || '[]');
-  const pct = Math.round((completed.length / 12) * 100);
+  const completedEntries = JSON.parse(localStorage.getItem('pilgrim_completed_entries') || '{}');
+  
+  let totalEntries = 0;
+  let completedEntriesCount = 0;
+  ITINERARY.forEach(d => {
+    d.entries.forEach((e, idx) => {
+      totalEntries++;
+      if (completedEntries[`d${d.day}_e${idx}`]) {
+        completedEntriesCount++;
+      }
+    });
+  });
+
+  const pct = totalEntries > 0 ? Math.round((completedEntriesCount / totalEntries) * 100) : 0;
   const circumference = 2 * Math.PI * 42;
   const offset = circumference - (pct / 100) * circumference;
-  document.getElementById('progress-circle').style.strokeDashoffset = offset;
-  document.getElementById('progress-pct').textContent = pct + '%';
-  document.getElementById('progress-text').textContent =
-    completed.length === 12 ? '🎉 All days completed! Har Har Mahadev!' :
-    `${completed.length} of 12 days completed`;
+  
+  const progressCircle = document.getElementById('progress-circle');
+  if (progressCircle) progressCircle.style.strokeDashoffset = offset;
+  
+  const progressPct = document.getElementById('progress-pct');
+  if (progressPct) progressPct.textContent = pct + '%';
+  
+  const progressText = document.getElementById('progress-text');
+  if (progressText) {
+    const completedDays = JSON.parse(localStorage.getItem('pilgrim_completed_days') || '[]');
+    progressText.textContent =
+      completedDays.length === 12 ? '🎉 All days completed! Har Har Mahadev!' :
+      `${completedDays.length} of 12 days completed (${completedEntriesCount} of ${totalEntries} activities checked)`;
+  }
 }
 
 
@@ -3085,6 +3180,34 @@ window.addEventListener('scroll', () => {
 /* ───────────────────────────────────────────
    INIT
    ─────────────────────────────────────────── */
+// Migration from daywise completion to linewise completion
+(function migrateProgressData() {
+  let completedEntries = {};
+  try {
+    completedEntries = JSON.parse(localStorage.getItem('pilgrim_completed_entries') || '{}');
+  } catch (e) {
+    completedEntries = {};
+  }
+  
+  let completedDays = [];
+  try {
+    completedDays = JSON.parse(localStorage.getItem('pilgrim_completed_days') || '[]');
+  } catch (e) {
+    completedDays = [];
+  }
+  
+  if (Object.keys(completedEntries).length === 0 && completedDays.length > 0) {
+    ITINERARY.forEach(d => {
+      if (completedDays.includes(d.day)) {
+        d.entries.forEach((e, idx) => {
+          completedEntries[`d${d.day}_e${idx}`] = true;
+        });
+      }
+    });
+    localStorage.setItem('pilgrim_completed_entries', JSON.stringify(completedEntries));
+  }
+})();
+
 renderStars();
 renderItinerary();
 renderBudget();
@@ -3727,6 +3850,15 @@ Here is the context:
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
+
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+        .catch(err => console.error('Service Worker registration failed:', err));
+    });
+  }
 
 })();
 </script>

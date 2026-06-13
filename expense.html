@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>💰 Yatra Expense Logger & Analytics Dashboard | PayanaAI</title>
 <meta name="description" content="Real-time solo trip expense logging system and analytical dashboard for the Kedarnath-Badrinath pilgrimage 2026. Persists data offline.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#F97316">
+<link rel="apple-touch-icon" href="yatra-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
@@ -1075,6 +1078,15 @@ function exportData(format) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
 }
 </script>
 
