@@ -755,7 +755,16 @@ window.addEventListener('load', () => {
 });
 
 function saveToLocalStorage() {
-  localStorage.setItem('pilgrim_expenses', JSON.stringify(expenses));
+  try {
+    localStorage.setItem('pilgrim_expenses', JSON.stringify(expenses));
+  } catch (e) {
+    console.error("Local Storage Save Error:", e);
+    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      alert("⚠️ Browser Storage limit exceeded! Unable to save. Please clean up old entries to make space.");
+    } else {
+      alert("⚠️ Error saving data. Browser storage might be full or restricted.");
+    }
+  }
 }
 
 function initCharts() {
@@ -1093,12 +1102,29 @@ function handleExcelUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  // Reject files larger than 10MB immediately to prevent browser memory exhaustion
+  if (file.size > 10 * 1024 * 1024) {
+    alert("⚠️ File is too large. Please upload a spreadsheet under 10MB.");
+    event.target.value = '';
+    return;
+  }
+
   const reader = new FileReader();
 
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+      
+      // Memory-optimized SheetJS parsing: bypass formulas, HTML formats, text strings and styles
+      const workbook = XLSX.read(data, { 
+        type: 'array',
+        cellFormula: false,
+        cellHTML: false,
+        cellStyles: false,
+        cellText: false,
+        cellDates: true
+      });
+      
       const importedExpenses = parseWorkbook(workbook);
 
       if (importedExpenses.length === 0) {
@@ -1114,7 +1140,11 @@ function handleExcelUpload(event) {
       }
     } catch (err) {
       console.error('Failed to parse spreadsheet:', err);
-      alert('Error parsing the uploaded file. Please ensure it is a valid Excel (.xlsx/.xls) or CSV file.');
+      if (err.message && (err.message.includes('memory') || err.message.includes('RangeError') || err.message.includes('alloc'))) {
+        alert('⚠️ Unable to import file due to low memory. Please simplify the spreadsheet or split it into smaller sheets.');
+      } else {
+        alert('⚠️ Error parsing the uploaded file. Please ensure it is a valid Excel (.xlsx/.xls) or CSV file.');
+      }
     }
     // Reset file input value so same file can be uploaded again
     event.target.value = '';
