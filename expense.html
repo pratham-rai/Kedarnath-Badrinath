@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════
    CSS VARIABLES & CUSTOM THEME
@@ -599,10 +600,18 @@ tr:hover td {
           <button type="submit" class="btn-submit">💾 Add Entry</button>
         </form>
 
-        <div class="data-buttons">
-          <button class="btn-data" onclick="exportData('json')">📤 Export JSON</button>
-          <button class="btn-data" onclick="exportData('csv')">📊 Export CSV</button>
-          <button class="btn-data danger" onclick="clearAllData()">🗑️ Clear All</button>
+        <div class="data-buttons" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <button class="btn-data" onclick="exportData('json')" style="flex: 1;">📤 Export JSON</button>
+            <button class="btn-data" onclick="exportData('csv')" style="flex: 1;">📊 Export CSV</button>
+          </div>
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <label for="import-excel" class="btn-data" style="flex: 1; cursor: pointer; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: rgba(5, 150, 105, 0.05); color: var(--emerald); border-color: rgba(5, 150, 105, 0.2);">
+              📥 Import Excel / CSV
+            </label>
+            <input type="file" id="import-excel" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelUpload(event)">
+            <button class="btn-data danger" onclick="clearAllData()" style="flex: 1;">🗑️ Clear All</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1078,6 +1087,166 @@ function exportData(format) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function handleExcelUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const importedExpenses = parseWorkbook(workbook);
+
+      if (importedExpenses.length === 0) {
+        alert('Could not find any valid expense rows in the uploaded file. Please make sure the column headers match (Day, Location/Place, Category, Amount, Description).');
+        return;
+      }
+
+      if (confirm(`Found ${importedExpenses.length} valid expenses in the file. Do you want to load them into your tracker? (This will merge with your existing entries)`)) {
+        expenses = [...expenses, ...importedExpenses];
+        saveToLocalStorage();
+        updateDashboard();
+        alert('Expenses successfully imported!');
+      }
+    } catch (err) {
+      console.error('Failed to parse spreadsheet:', err);
+      alert('Error parsing the uploaded file. Please ensure it is a valid Excel (.xlsx/.xls) or CSV file.');
+    }
+    // Reset file input value so same file can be uploaded again
+    event.target.value = '';
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function parseWorkbook(workbook) {
+  const firstSheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[firstSheetName];
+  
+  // Convert sheet to JSON array of arrays
+  const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+  if (rows.length < 2) return [];
+
+  // Match column headers case-insensitively
+  const headers = rows[0].map(h => String(h || '').trim().toLowerCase());
+  
+  const idxAmount = headers.findIndex(h => h.includes('amount') || h.includes('cost') || h.includes('price') || h.includes('spent'));
+  const idxCategory = headers.findIndex(h => h.includes('category') || h.includes('type'));
+  const idxPlace = headers.findIndex(h => h.includes('place') || h.includes('location') || h.includes('where'));
+  const idxDay = headers.findIndex(h => h.includes('day') || h.includes('yatra day') || h.includes('date'));
+  const idxDesc = headers.findIndex(h => h.includes('desc') || h.includes('note') || h.includes('comment') || h.includes('detail'));
+  const idxTimestamp = headers.findIndex(h => h.includes('time') || h.includes('logged'));
+  const idxId = headers.findIndex(h => h === 'id' || h.includes('identifier'));
+
+  const parsed = [];
+  const validCategories = ['Food', 'Stay', 'Transport', 'Darshan', 'Shopping', 'Emergency', 'Other'];
+  const validPlaces = [
+    'Haridwar', 'Triyuginarayan', 'Sonprayag/Gaurikund', 'Kedarnath', 
+    'Vasuki Tal', 'Guptkashi', 'Badrinath', 'Mana Village', 
+    'Joshimath', 'Rishikesh', 'Transit', 'Other'
+  ];
+  const validDays = [
+    'Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6',
+    'Day 7', 'Day 8', 'Day 9', 'Day 10', 'Day 11', 'Day 12'
+  ];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length === 0) continue;
+
+    // Resolve column values or fallback to standard indices: 0=Day, 1=Place, 2=Category, 3=Amount, 4=Desc
+    const amountVal = idxAmount !== -1 ? row[idxAmount] : row[3];
+    const categoryVal = idxCategory !== -1 ? row[idxCategory] : row[2];
+    const placeVal = idxPlace !== -1 ? row[idxPlace] : row[1];
+    const dayVal = idxDay !== -1 ? row[idxDay] : row[0];
+    const descVal = idxDesc !== -1 ? row[idxDesc] : row[4];
+    const timeVal = idxTimestamp !== -1 ? row[idxTimestamp] : row[5];
+    const idVal = idxId !== -1 ? row[idxId] : row[6];
+
+    // Check if amount is valid
+    const amount = parseFloat(amountVal);
+    if (isNaN(amount) || amount <= 0) continue;
+
+    // Normalise Category
+    let category = String(categoryVal || 'Other').trim();
+    category = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+    if (category.includes('Food') || category.includes('Eat') || category.includes('Meal')) category = 'Food';
+    if (category.includes('Stay') || category.includes('Hotel') || category.includes('Room') || category.includes('Dorm')) category = 'Stay';
+    if (category.includes('Transport') || category.includes('Travel') || category.includes('Bus') || category.includes('Cab') || category.includes('Train')) category = 'Transport';
+    if (category.includes('Darshan') || category.includes('Puja') || category.includes('Temple') || category.includes('Dakshina')) category = 'Darshan';
+    if (category.includes('Shop') || category.includes('Gift')) category = 'Shopping';
+    if (category.includes('Emergency') || category.includes('Medical') || category.includes('Doctor') || category.includes('Medicine')) category = 'Emergency';
+    if (!validCategories.includes(category)) category = 'Other';
+
+    // Normalise Place
+    let place = String(placeVal || 'Transit').trim();
+    let matchedPlace = validPlaces.find(p => p.toLowerCase() === place.toLowerCase());
+    if (!matchedPlace) {
+      if (place.toLowerCase().includes('sonprayag') || place.toLowerCase().includes('gaurikund')) {
+        matchedPlace = 'Sonprayag/Gaurikund';
+      } else if (place.toLowerCase().includes('mana')) {
+        matchedPlace = 'Mana Village';
+      } else if (place.toLowerCase().includes('vasuki')) {
+        matchedPlace = 'Vasuki Tal';
+      } else {
+        matchedPlace = validPlaces.find(p => p.toLowerCase().includes(place.toLowerCase())) || 'Other';
+      }
+    }
+
+    // Normalise Day
+    let day = String(dayVal || 'Day 1').trim();
+    if (!day.toLowerCase().startsWith('day')) {
+      // If it's just a number, prepend 'Day '
+      const numMatch = day.match(/\d+/);
+      if (numMatch) {
+        day = 'Day ' + numMatch[0];
+      } else {
+        day = 'Day 1';
+      }
+    }
+    // Check if the formatted day matches one of our 12 days
+    let matchedDay = validDays.find(d => d.toLowerCase() === day.toLowerCase());
+    if (!matchedDay) {
+      // Fallback: search for first number inside it and match Day 1-12
+      const numMatch = day.match(/\d+/);
+      if (numMatch && parseInt(numMatch[0]) >= 1 && parseInt(numMatch[0]) <= 12) {
+        matchedDay = 'Day ' + numMatch[0];
+      } else {
+        matchedDay = 'Day 1';
+      }
+    }
+
+    // Normalise description
+    const desc = String(descVal || `${category} at ${matchedPlace}`).trim();
+
+    // Normalise timestamp
+    let timestamp = new Date().toISOString();
+    if (timeVal) {
+      const parsedTime = new Date(timeVal);
+      if (!isNaN(parsedTime.getTime())) {
+        timestamp = parsedTime.toISOString();
+      }
+    }
+
+    // Generate unique ID
+    const id = idVal ? String(idVal).trim() : 'exp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+    parsed.push({
+      id,
+      amount,
+      category,
+      place: matchedPlace,
+      day: matchedDay,
+      desc,
+      timestamp
+    });
+  }
+
+  return parsed;
 }
 
 // Register service worker for PWA
